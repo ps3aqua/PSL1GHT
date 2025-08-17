@@ -18,7 +18,7 @@ export CXXFLAGS_INIT	:=  -D_GLIBCXX11_USE_C99_STDIO
 
 PREFIX			:=	ppu-
 
-MACHDEP			=	-mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
+MACHDEP			=	-mcpu=cell -mhard-float -fmodulo-sched -ffunction-sections -fdata-sections
 
 include $(PSL1GHT)/base_rules
 include $(PSL1GHT)/data_rules

@@ -35,6 +35,14 @@ class SelfHeader(Struct):
 		self.digest	= Struct.uint64
 		self.digestSize = Struct.uint64
 
+class Version(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.type	= Struct.uint32
+		self.present	= Struct.uint32
+		self.size	= Struct.uint32
+		self.unknown4	= Struct.uint32
+
 class AppInfo(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
@@ -182,8 +190,9 @@ def genDigest(out, npdrm, elf):
 
 def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	elf, ehdr, phdrs = readElf(infile)
-	
+
 	header = SelfHeader()
+	version = Version()
 	appinfo = AppInfo()
 	digestSubHeader = DigestSubHeader()
 	digestType1 = DigestType1()
@@ -204,9 +213,9 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	phdrOffsetsOffset = header.phdr + len(phdr) * len(phdrs)
 	header.phdrOffsets = align(phdrOffsetsOffset, 0x10);
 
-	header.sceVersion = 0
-	
-	digestOffset = header.phdrOffsets + len(phdrs) * len(phdrOffsets)
+	header.sceversion = header.phdrOffsets + len(phdrs) * len(phdrOffsets)
+
+	digestOffset = header.sceversion + len(version)
 	header.digest = align(digestOffset, 0x10)
 	header.digestSize = len(digestSubHeader) + len(digestType1) + len(digestSubHeader) + len(digestType2)
 	if npdrm:
@@ -217,7 +226,10 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 
 	header.shdr = elfOffset + ehdr.shoff
 	header.headerSize = elfOffset
-	header.meta = endofHeader - 0x10
+	header.meta = endofHeader - 0x20
+
+	version.type = 1
+	version.size = len(version)
 
 	appinfo.authid = 0x1010000001000003
 	appinfo.unknown = 0x1000002
@@ -251,9 +263,11 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	out.write(padding(phdrOffsetsOffset, 0x10))
 	for offset in offsets:
 		out.write(offset.pack())
-	out.write(padding(digestOffset, 0x10))
+	out.write(padding(out.tell(), 0x10))
+	out.write(version.pack())
+	out.write(padding(out.tell(), 0x10))
 	genDigest(out, npdrm, elf)
-	out.write(padding(endofHeader, 0x80))
+	out.seek(elfOffset)
 	out.write(elf)
 
 

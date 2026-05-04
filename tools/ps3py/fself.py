@@ -59,6 +59,11 @@ class DigestSubHeader(Struct):
 		self.size		= Struct.uint32
 		self.cont		= Struct.uint64
 
+class DigestType1(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.capability		= Struct.uint8[0x20]
+
 class DigestType2(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
@@ -135,11 +140,18 @@ def readElf(infile):
 
 def genDigest(out, npdrm):
 	digestSubHeader = DigestSubHeader()
+	digestType1 = DigestType1()
 	digestType2 = DigestType2()
 	digestTypeNPDRM = DigestTypeNPDRM()
 
+	digestSubHeader.type = 1
+	digestSubHeader.size = len(digestSubHeader) + len(digestType1)
+	digestSubHeader.cont = 1
+	out.write(digestSubHeader.pack())
+	out.write(digestType1.pack())
+
 	digestSubHeader.type = 2
-	digestSubHeader.size = 0x40
+	digestSubHeader.size = len(digestSubHeader) + len(digestType2)
 	if npdrm:
 		digestSubHeader.cont = 1
 	out.write(digestSubHeader.pack())
@@ -172,6 +184,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	header = SelfHeader()
 	appinfo = AppInfo()
 	digestSubHeader = DigestSubHeader()
+	digestType1 = DigestType1()
 	digestType2 = DigestType2()
 	digestTypeNPDRM = DigestTypeNPDRM()
 	phdr = Elf64_phdr()
@@ -193,8 +206,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	
 	digestOffset = header.phdrOffsets + len(phdrs) * len(phdrOffsets)
 	header.digest = align(digestOffset, 0x10)
-	header.digestSize = len(digestSubHeader) + len(digestType2
-)
+	header.digestSize = len(digestSubHeader) + len(digestType1) + len(digestSubHeader) + len(digestType2)
 	if npdrm:
 		header.digestSize += len(digestSubHeader) + len(digestTypeNPDRM)
 

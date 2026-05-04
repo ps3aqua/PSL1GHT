@@ -109,11 +109,11 @@ class Elf64_phdr(Struct):
 		self.align	= Struct.uint64
 
 def align(address, alignment):
-	padding = alignment - (address % alignment)
+	padding = (alignment - (address % alignment)) % alignment
 	return address + padding
 
 def padding(address, alignment):
-	padding = alignment - (address % alignment)
+	padding = (alignment - (address % alignment)) % alignment
 	return b"\0" * padding
 
 def readElf(infile):

@@ -77,6 +77,8 @@ class DigestTypeNPDRM(Struct):
 		self.fileSHA1 		= Struct.uint8[0x10]
 		self.notSHA1 		= Struct.uint8[0x10]
 		self.notXORKLSHA1 	= Struct.uint8[0x10]
+		self.limitedTimeStart	= Struct.uint64
+		self.limitedTimeEnd	= Struct.uint64
 
 class Elf64_ehdr(Struct):
 	__endian__ = Struct.BE
@@ -149,7 +151,7 @@ def genDigest(out, npdrm):
 		return
 
 	digestSubHeader.type = 3
-	digestSubHeader.size = 0x90
+	digestSubHeader.size = len(digestSubHeader) + len(digestTypeNPDRM)
 	digestSubHeader.cont = 0
 	out.write(digestSubHeader.pack())
 

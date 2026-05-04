@@ -3,6 +3,7 @@ from Struct import Struct
 import struct
 import getopt
 import sys
+import hashlib
 
 """
 	This is a quick and dirty implementation of make_fself based on the
@@ -138,7 +139,7 @@ def readElf(infile):
 		
 		return data, ehdr, phdrs
 
-def genDigest(out, npdrm):
+def genDigest(out, npdrm, elf):
 	digestSubHeader = DigestSubHeader()
 	digestType1 = DigestType1()
 	digestType2 = DigestType2()
@@ -157,6 +158,7 @@ def genDigest(out, npdrm):
 	out.write(digestSubHeader.pack())
 
 	digestType2.magicBits = (0x62, 0x7c, 0xb1, 0x80, 0x8a, 0xb9, 0x38, 0xe3, 0x2c, 0x8c, 0x09, 0x17, 0x08, 0x72, 0x6a, 0x57, 0x9e, 0x25, 0x86, 0xe4)
+	digestType2.digest[:] = hashlib.sha1(elf).digest()
 	out.write(digestType2.pack())
 
 	if not npdrm:
@@ -250,7 +252,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	for offset in offsets:
 		out.write(offset.pack())
 	out.write(padding(digestOffset, 0x10))
-	genDigest(out, npdrm)
+	genDigest(out, npdrm, elf)
 	out.write(padding(endofHeader, 0x80))
 	out.write(elf)
 

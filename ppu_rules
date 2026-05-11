@@ -32,8 +32,8 @@ PS3LOADAPP		:=	ps3load$(POSTFIX)
 RAW2H			:=	raw2h$(POSTFIX)
 
 # fake SELF type4 / type8 tools
-FSELF			:=	fself
-FSELF_NPDRM		:=	$(FSELF) -n
+FSELF			:=	fself.py
+FSELF_NPDRM		:=	$(FSELF) --npdrm
 
 # signed SELF type4 / type8 tools
 SELF			:=	make_self

@@ -224,7 +224,8 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	endofHeader = header.digest + header.digestSize
 	elfOffset = align(endofHeader, 0x80)
 
-	header.shdr = elfOffset + ehdr.shoff
+	if ehdr.shoff != 0 and ehdr.shnum != 0:
+		header.shdr = elfOffset + ehdr.shoff
 	header.headerSize = elfOffset
 	header.meta = endofHeader - 0x20
 

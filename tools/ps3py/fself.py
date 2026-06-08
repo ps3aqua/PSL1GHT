@@ -18,26 +18,26 @@ import hashlib
 class SceHeader(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
-		self.magic	= Struct.uint32
-		self.headerVer  = Struct.uint32
-		self.flags	= Struct.uint16
-		self.type	= Struct.uint16
-		self.meta	= Struct.uint32
-		self.headerSize = Struct.uint64
-		self.encryptedSize = Struct.uint64
+		self.magic		= Struct.uint32
+		self.headerVersion	= Struct.uint32
+		self.flags		= Struct.uint16
+		self.type		= Struct.uint16
+		self.metaOffset		= Struct.uint32
+		self.headerSize		= Struct.uint64
+		self.decryptedSize	= Struct.uint64
 
 class ExtendedHeader(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
-		self.unknown	= Struct.uint64
-		self.AppInfo	= Struct.uint64
-		self.elf	= Struct.uint64
-		self.phdr	= Struct.uint64
-		self.shdr	= Struct.uint64
-		self.phdrOffsets = Struct.uint64
-		self.sceversion = Struct.uint64
-		self.digest	= Struct.uint64
-		self.digestSize = Struct.uint64
+		self.version		= Struct.uint64
+		self.appInfoOffset	= Struct.uint64
+		self.ehdrOffset		= Struct.uint64
+		self.phdrOffset		= Struct.uint64
+		self.shdrOffset		= Struct.uint64
+		self.segExtHdrOffset	= Struct.uint64
+		self.versionOffset	= Struct.uint64
+		self.supplHdrOffset	= Struct.uint64
+		self.supplHdrSize	= Struct.uint64
 
 class Version(Struct):
 	__endian__ = Struct.BE
@@ -55,7 +55,7 @@ class AppInfo(Struct):
 		self.appType	= Struct.uint32
 		self.appVersion = Struct.uint64
 
-class phdrOffset(Struct):
+class ProgramHeaderOffset(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
 		self.offset	= Struct.uint64
@@ -204,35 +204,35 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	digestType2 = DigestType2()
 	digestTypeNPDRM = DigestTypeNPDRM()
 	phdr = Elf64_phdr()
-	phdrOffsets = phdrOffset()
+	phdrOffset = ProgramHeaderOffset()
 
 	sceHeader.magic = 0x53434500
-	sceHeader.headerVer = 2
+	sceHeader.headerVersion = 2
 	sceHeader.flags = 0x8000
 	sceHeader.type = 1
-	sceHeader.encryptedSize = len(elf)
-	extendedHeader.unknown = 3
-	extendedHeader.AppInfo = align(len(sceHeader) + len(extendedHeader), 0x10)
-	extendedHeader.elf = align(extendedHeader.AppInfo + len(appinfo), 0x10)
-	extendedHeader.phdr = extendedHeader.elf + len(ehdr)
-	phdrOffsetsOffset = extendedHeader.phdr + len(phdr) * len(phdrs)
-	extendedHeader.phdrOffsets = align(phdrOffsetsOffset, 0x10)
+	sceHeader.decryptedSize = len(elf)
+	extendedHeader.version = 3
+	extendedHeader.appInfoOffset = align(len(sceHeader) + len(extendedHeader), 0x10)
+	extendedHeader.ehdrOffset = align(extendedHeader.appInfoOffset + len(appinfo), 0x10)
+	extendedHeader.phdrOffset = extendedHeader.ehdrOffset + len(ehdr)
+	phdrOffsetsOffset = extendedHeader.phdrOffset + len(phdr) * len(phdrs)
+	extendedHeader.segExtHdrOffset = align(phdrOffsetsOffset, 0x10)
 
-	extendedHeader.sceversion = extendedHeader.phdrOffsets + len(phdrs) * len(phdrOffsets)
+	extendedHeader.versionOffset = extendedHeader.segExtHdrOffset + len(phdrs) * len(phdrOffset)
 
-	digestOffset = extendedHeader.sceversion + len(version)
-	extendedHeader.digest = align(digestOffset, 0x10)
-	extendedHeader.digestSize = len(digestSubHeader) + len(digestType1) + len(digestSubHeader) + len(digestType2)
+	digestOffset = extendedHeader.versionOffset + len(version)
+	extendedHeader.supplHdrOffset = align(digestOffset, 0x10)
+	extendedHeader.supplHdrSize = len(digestSubHeader) + len(digestType1) + len(digestSubHeader) + len(digestType2)
 	if npdrm:
-		extendedHeader.digestSize += len(digestSubHeader) + len(digestTypeNPDRM)
+		extendedHeader.supplHdrSize += len(digestSubHeader) + len(digestTypeNPDRM)
 
-	endofHeader = extendedHeader.digest + extendedHeader.digestSize
+	endofHeader = extendedHeader.supplHdrOffset + extendedHeader.supplHdrSize
 	elfOffset = align(endofHeader, 0x80)
 
 	if ehdr.shoff != 0 and ehdr.shnum != 0:
-		extendedHeader.shdr = elfOffset + ehdr.shoff
+		extendedHeader.shdrOffset = elfOffset + ehdr.shoff
 	sceHeader.headerSize = elfOffset
-	sceHeader.meta = endofHeader - 0x20
+	sceHeader.metaOffset = endofHeader - 0x20
 
 	version.type = 1
 	version.size = len(version)
@@ -247,7 +247,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 
 	offsets = []
 	for phdr in phdrs:
-		offset = phdrOffset()
+		offset = ProgramHeaderOffset()
 		offset.offset = phdr.offset + elfOffset
 		offset.size = phdr.filesz
 		offset.unk1 = 1
@@ -263,7 +263,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	out.write(extendedHeader.pack())
 	out.write(padding(out.tell(), 0x10))
 	out.write(appinfo.pack())
-	out.write(padding(extendedHeader.AppInfo + len(appinfo), 0x10))
+	out.write(padding(extendedHeader.appInfoOffset + len(appinfo), 0x10))
 	out.write(ehdr.pack())
 	for phdr in phdrs:
 		out.write(phdr.pack())

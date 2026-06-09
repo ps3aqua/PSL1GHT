@@ -165,8 +165,7 @@ def genDigest(out, npdrm, elf):
 
 	digestSubHeader.type = 2
 	digestSubHeader.size = len(digestSubHeader) + len(digestType2)
-	if npdrm:
-		digestSubHeader.cont = 1
+	digestSubHeader.cont = 1 if npdrm else 0
 	out.write(digestSubHeader.pack())
 
 	digestType2.magicBits = (0x62, 0x7c, 0xb1, 0x80, 0x8a, 0xb9, 0x38, 0xe3, 0x2c, 0x8c, 0x09, 0x17, 0x08, 0x72, 0x6a, 0x57, 0x9e, 0x25, 0x86, 0xe4)

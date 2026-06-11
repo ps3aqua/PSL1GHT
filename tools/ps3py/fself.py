@@ -196,10 +196,9 @@ def readElf(infile):
 		
 		return data, ehdr, phdrs
 
-def genMetadata(phdrs):
+def genMetadata(phdrs, elfOffset):
 	metadataInfo = MetadataInfo()
 	metadataHeader = MetadataHeader()
-	metadataSectionHeader = MetadataSectionHeader()
 	metadataKey = MetadataKey()
 	sectionHash = SectionHash()
 
@@ -208,7 +207,12 @@ def genMetadata(phdrs):
 	metadata = bytearray()
 	metadata += metadataInfo.pack()
 	metadata += metadataHeader.pack()
-	for phdr in phdrs:
+	for i, phdr in enumerate(phdrs):
+		metadataSectionHeader = MetadataSectionHeader()
+		metadataSectionHeader.dataOffset = elfOffset + phdr.offset
+		metadataSectionHeader.dataSize = phdr.filesz
+		metadataSectionHeader.programIndex = i
+		metadataSectionHeader.type = 2
 		metadata += metadataSectionHeader.pack()
 	for i in range(metadataHeader.keyCount):
 		metadata += metadataKey.pack()
@@ -292,8 +296,9 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 
 	endofHeader = extendedHeader.supplHdrOffset + extendedHeader.supplHdrSize
 	sceHeader.metaOffset = endofHeader - len(sceHeader)
-	metadata = genMetadata(phdrs)
-	elfOffset = align(sceHeader.metaOffset + len(sceHeader) + len(metadata), 0x80)
+	metadataSize = len(genMetadata(phdrs, 0))
+	elfOffset = align(sceHeader.metaOffset + len(sceHeader) + metadataSize, 0x80)
+	metadata = genMetadata(phdrs, elfOffset)
 
 	if ehdr.shoff != 0 and ehdr.shnum != 0:
 		extendedHeader.shdrOffset = elfOffset + ehdr.shoff

@@ -98,6 +98,51 @@ class DigestTypeNPDRM(Struct):
 		self.limitedTimeStart	= Struct.uint64
 		self.limitedTimeEnd	= Struct.uint64
 
+class MetadataInfo(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.key		= Struct.uint8[0x10]
+		self.keyPad		= Struct.uint8[0x10]
+		self.iv			= Struct.uint8[0x10]
+		self.ivPad		= Struct.uint8[0x10]
+
+class MetadataHeader(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.signatureInputLength = Struct.uint64
+		self.unknown1		= Struct.uint32
+		self.sectionCount	= Struct.uint32
+		self.keyCount		= Struct.uint32
+		self.optHeaderSize	= Struct.uint32
+		self.unknown2		= Struct.uint32
+		self.unknown3		= Struct.uint32
+
+class MetadataSectionHeader(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.dataOffset		= Struct.uint64
+		self.dataSize		= Struct.uint64
+		self.type		= Struct.uint32
+		self.programIndex	= Struct.uint32
+		self.hashed		= Struct.uint32
+		self.sha1Index		= Struct.uint32
+		self.encrypted		= Struct.uint32
+		self.keyIndex		= Struct.uint32
+		self.ivIndex		= Struct.uint32
+		self.compressed		= Struct.uint32
+
+class MetadataKey(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.key		= Struct.uint8[0x10]
+
+class SectionHash(Struct):
+	__endian__ = Struct.BE
+	def __format__(self):
+		self.sha1		= Struct.uint8[0x14]
+		self.padding		= Struct.uint8[0x0c]
+		self.hmacKey		= Struct.uint8[0x40]
+
 class Elf64_ehdr(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
@@ -150,6 +195,26 @@ def readElf(infile):
 			phdrs.append(phdr)
 		
 		return data, ehdr, phdrs
+
+def genMetadata(phdrs):
+	metadataInfo = MetadataInfo()
+	metadataHeader = MetadataHeader()
+	metadataSectionHeader = MetadataSectionHeader()
+	metadataKey = MetadataKey()
+	sectionHash = SectionHash()
+
+	metadataHeader.sectionCount = len(phdrs)
+
+	metadata = bytearray()
+	metadata += metadataInfo.pack()
+	metadata += metadataHeader.pack()
+	for phdr in phdrs:
+		metadata += metadataSectionHeader.pack()
+	for i in range(metadataHeader.keyCount):
+		metadata += metadataKey.pack()
+	for phdr in phdrs:
+		metadata += sectionHash.pack()
+	return bytes(metadata)
 
 def genDigest(out, npdrm, elf):
 	digestSubHeader = DigestSubHeader()
@@ -226,12 +291,13 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 		extendedHeader.supplHdrSize += len(digestSubHeader) + len(digestTypeNPDRM)
 
 	endofHeader = extendedHeader.supplHdrOffset + extendedHeader.supplHdrSize
-	elfOffset = align(endofHeader, 0x80)
+	sceHeader.metaOffset = endofHeader - len(sceHeader)
+	metadata = genMetadata(phdrs)
+	elfOffset = align(sceHeader.metaOffset + len(sceHeader) + len(metadata), 0x80)
 
 	if ehdr.shoff != 0 and ehdr.shnum != 0:
 		extendedHeader.shdrOffset = elfOffset + ehdr.shoff
 	sceHeader.headerSize = elfOffset
-	sceHeader.metaOffset = endofHeader - 0x20
 
 	version.type = 1
 	version.size = len(version)
@@ -273,6 +339,8 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	out.write(version.pack())
 	out.write(padding(out.tell(), 0x10))
 	genDigest(out, npdrm, elf)
+	out.seek(sceHeader.metaOffset + len(sceHeader))
+	out.write(metadata)
 	out.seek(elfOffset)
 	out.write(elf)
 

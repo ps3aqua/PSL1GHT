@@ -65,26 +65,26 @@ class ProgramHeaderOffset(Struct):
 		self.unk3	= Struct.uint32
 		self.unk4	= Struct.uint32
 
-class DigestSubHeader(Struct):
+class SupplementalHeader(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
 		self.type		= Struct.uint32
 		self.size		= Struct.uint32
 		self.cont		= Struct.uint64
 
-class DigestType1(Struct):
+class SupplementalHeaderType1(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
 		self.capability		= Struct.uint8[0x20]
 
-class DigestType2(Struct):
+class SupplementalHeaderType2(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
 		self.magicBits		= Struct.uint8[0x14]
 		self.digest		= Struct.uint8[0x14]
 		self.padding		= Struct.uint8[0x08]
 
-class DigestTypeNPDRM(Struct):
+class SupplementalHeaderNPDRM(Struct):
 	__endian__ = Struct.BE
 	def __format__(self):
 		self.magic 		= Struct.uint32
@@ -220,44 +220,46 @@ def genMetadata(phdrs, elfOffset):
 		metadata += sectionHash.pack()
 	return bytes(metadata)
 
-def genDigest(out, npdrm, elf):
-	digestSubHeader = DigestSubHeader()
-	digestType1 = DigestType1()
-	digestType2 = DigestType2()
-	digestTypeNPDRM = DigestTypeNPDRM()
+def genSupplementalHeaderTable(npdrm, elf):
+	supplementalHeader = SupplementalHeader()
+	supplementalHeaderType1 = SupplementalHeaderType1()
+	supplementalHeaderType2 = SupplementalHeaderType2()
+	supplementalHeaderNPDRM = SupplementalHeaderNPDRM()
 
-	digestSubHeader.type = 1
-	digestSubHeader.size = len(digestSubHeader) + len(digestType1)
-	digestSubHeader.cont = 1
-	out.write(digestSubHeader.pack())
-	out.write(digestType1.pack())
+	table = bytearray()
 
-	digestSubHeader.type = 2
-	digestSubHeader.size = len(digestSubHeader) + len(digestType2)
-	digestSubHeader.cont = 1 if npdrm else 0
-	out.write(digestSubHeader.pack())
+	supplementalHeader.type = 1
+	supplementalHeader.size = len(supplementalHeader) + len(supplementalHeaderType1)
+	supplementalHeader.cont = 1
+	table += supplementalHeader.pack()
+	table += supplementalHeaderType1.pack()
 
-	digestType2.magicBits = (0x62, 0x7c, 0xb1, 0x80, 0x8a, 0xb9, 0x38, 0xe3, 0x2c, 0x8c, 0x09, 0x17, 0x08, 0x72, 0x6a, 0x57, 0x9e, 0x25, 0x86, 0xe4)
-	digestType2.digest[:] = hashlib.sha1(elf).digest()
-	out.write(digestType2.pack())
+	supplementalHeader.type = 2
+	supplementalHeader.size = len(supplementalHeader) + len(supplementalHeaderType2)
+	supplementalHeader.cont = 1 if npdrm else 0
+	table += supplementalHeader.pack()
 
-	if not npdrm:
-		return
+	supplementalHeaderType2.magicBits = (0x62, 0x7c, 0xb1, 0x80, 0x8a, 0xb9, 0x38, 0xe3, 0x2c, 0x8c, 0x09, 0x17, 0x08, 0x72, 0x6a, 0x57, 0x9e, 0x25, 0x86, 0xe4)
+	supplementalHeaderType2.digest[:] = hashlib.sha1(elf).digest()
+	table += supplementalHeaderType2.pack()
 
-	digestSubHeader.type = 3
-	digestSubHeader.size = len(digestSubHeader) + len(digestTypeNPDRM)
-	digestSubHeader.cont = 0
-	out.write(digestSubHeader.pack())
+	if npdrm:
+		supplementalHeader.type = 3
+		supplementalHeader.size = len(supplementalHeader) + len(supplementalHeaderNPDRM)
+		supplementalHeader.cont = 0
+		table += supplementalHeader.pack()
 
-	digestTypeNPDRM.magic = 0x4e504400
-	digestTypeNPDRM.unk1 = 1
-	digestTypeNPDRM.drmType = 2
-	digestTypeNPDRM.unk2 = 1
-	digestTypeNPDRM.contentID = [0x30] * 0x2f + [0]
-	digestTypeNPDRM.fileSHA1 = (0x42, 0x69, 0x74, 0x65, 0x20, 0x4d, 0x65, 0x2c, 0x20, 0x53, 0x6f, 0x6e, 0x79, 0x00, 0xde, 0x07)
-	digestTypeNPDRM.notSHA1 = [0xab] * 0x10
-	digestTypeNPDRM.notXORKLSHA1 = [0x01] * 0x0f + [0x02]
-	out.write(digestTypeNPDRM.pack())
+		supplementalHeaderNPDRM.magic = 0x4e504400
+		supplementalHeaderNPDRM.unk1 = 1
+		supplementalHeaderNPDRM.drmType = 2
+		supplementalHeaderNPDRM.unk2 = 1
+		supplementalHeaderNPDRM.contentID = [0x30] * 0x2f + [0]
+		supplementalHeaderNPDRM.fileSHA1 = (0x42, 0x69, 0x74, 0x65, 0x20, 0x4d, 0x65, 0x2c, 0x20, 0x53, 0x6f, 0x6e, 0x79, 0x00, 0xde, 0x07)
+		supplementalHeaderNPDRM.notSHA1 = [0xab] * 0x10
+		supplementalHeaderNPDRM.notXORKLSHA1 = [0x01] * 0x0f + [0x02]
+		table += supplementalHeaderNPDRM.pack()
+
+	return bytes(table)
 
 
 def createFself(npdrm, infile, outfile="EBOOT.BIN"):
@@ -267,10 +269,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	extendedHeader = ExtendedHeader()
 	version = Version()
 	appinfo = AppInfo()
-	digestSubHeader = DigestSubHeader()
-	digestType1 = DigestType1()
-	digestType2 = DigestType2()
-	digestTypeNPDRM = DigestTypeNPDRM()
+	supplementalHeaderTable = genSupplementalHeaderTable(npdrm, elf)
 	phdr = Elf64_phdr()
 	phdrOffset = ProgramHeaderOffset()
 
@@ -288,11 +287,9 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 
 	extendedHeader.versionOffset = extendedHeader.segExtHdrOffset + len(phdrs) * len(phdrOffset)
 
-	digestOffset = extendedHeader.versionOffset + len(version)
-	extendedHeader.supplHdrOffset = align(digestOffset, 0x10)
-	extendedHeader.supplHdrSize = len(digestSubHeader) + len(digestType1) + len(digestSubHeader) + len(digestType2)
-	if npdrm:
-		extendedHeader.supplHdrSize += len(digestSubHeader) + len(digestTypeNPDRM)
+	supplementalHeaderOffset = extendedHeader.versionOffset + len(version)
+	extendedHeader.supplHdrOffset = align(supplementalHeaderOffset, 0x10)
+	extendedHeader.supplHdrSize = len(supplementalHeaderTable)
 
 	endofHeader = extendedHeader.supplHdrOffset + extendedHeader.supplHdrSize
 	sceHeader.metaOffset = endofHeader - len(sceHeader)
@@ -343,7 +340,7 @@ def createFself(npdrm, infile, outfile="EBOOT.BIN"):
 	out.write(padding(out.tell(), 0x10))
 	out.write(version.pack())
 	out.write(padding(out.tell(), 0x10))
-	genDigest(out, npdrm, elf)
+	out.write(supplementalHeaderTable)
 	out.seek(sceHeader.metaOffset + len(sceHeader))
 	out.write(metadata)
 	out.seek(elfOffset)

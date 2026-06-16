@@ -46,7 +46,7 @@ VPATH :=	$(BASEDIR)
 
 #---------------------------------------------------------------------------------
 OBJS		:= \
-			crt0.o crt1.o lv2-crti.o lv2-crtn.o lv2-sprx.o
+			crt0.o crt1.o lv2-crti.o lv2-crtn.o lv2-prx.o
 
 all: ppu
 

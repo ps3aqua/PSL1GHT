@@ -147,7 +147,11 @@ typedef struct
 #define ELFOSABI_OPENBSD	12	/* OpenBSD.  */
 #define ELFOSABI_ARM_AEABI	64	/* ARM EABI */
 #define ELFOSABI_ARM		97	/* ARM */
+#define ELFOSABI_CELL_LV2	102	/* CELL LV2 */
 #define ELFOSABI_STANDALONE	255	/* Standalone (embedded) application */
+
+/* PS3 PRX use this ELFv1-style PPU flag. */
+#define EF_PPC64_PPU_PRX	0x01000000
 
 #define EI_ABIVERSION	8		/* ABI version */
 
@@ -165,6 +169,22 @@ typedef struct
 #define ET_HIOS		0xfeff		/* OS-specific range end */
 #define ET_LOPROC	0xff00		/* Processor-specific range start */
 #define ET_HIPROC	0xffff		/* Processor-specific range end */
+
+
+/* SCE-specific ELF object file types (PS3 SELF/SPRX).  */
+#define ET_SCE_EXEC		0xfe00  /* SCE Executable - PRX2 */
+#define ET_SCE_RELEXEC		0xfe04  /* SCE Relocatable Executable - PRX2 */
+#define ET_SCE_STUBLIB		0xfe0c  /* SCE SDK Stubs */
+#define ET_SCE_DYNEXEC		0xfe10  /* SCE EXEC_ASLR */
+#define ET_SCE_DYNAMIC		0xfe18
+#define ET_SCE_IOPRELEXEC	0xff80  /* SCE IOP Relocatable Executable */
+#define ET_SCE_IOPRELEXEC2	0xff81  /* SCE IOP Relocatable Executable Version 2 */
+#define ET_SCE_EERELEXEC	0xff90  /* SCE EE Relocatable Executable */
+#define ET_SCE_EERELEXEC2	0xff91  /* SCE EE Relocatable Executable Version 2 */
+#define ET_SCE_PSPRELEXEC	0xffa0  /* SCE PSP Relocatable Executable */
+#define ET_SCE_PPURELEXEC	0xffa4  /* SCE PPU Relocatable Executable */
+#define ET_SCE_ARMRELEXEC	0xffa5  /* SCE ARM Relocatable Executable */
+#define ET_SCE_PSPOVERLAY	0xffa8
 
 /* Legal values for e_machine (architecture).  */
 
@@ -242,6 +262,11 @@ typedef struct
 #define SHT_RELR	  19            /* RELR relative relocations */
 #define	SHT_NUM		  20		/* Number of defined types.  */
 #define SHT_LOOS	  0x60000000	/* Start OS-specific.  */
+
+/* SCE-specific section types.  */
+#define SHT_SCE_RELA	  0x60000000
+#define SHT_SCE_NID	  0x61000001
+
 #define SHT_GNU_ATTRIBUTES 0x6ffffff5	/* Object attributes.  */
 #define SHT_GNU_HASH	  0x6ffffff6	/* GNU-style hash table.  */
 #define SHT_GNU_LIBLIST	  0x6ffffff7	/* Prelink library list */
@@ -255,8 +280,16 @@ typedef struct
 #define SHT_GNU_versym	  0x6fffffff	/* Version symbol table.  */
 #define SHT_HISUNW	  0x6fffffff	/* Sun-specific high bound.  */
 #define SHT_HIOS	  0x6fffffff	/* End OS-specific type */
+
 #define SHT_LOPROC	  0x70000000	/* Start of processor-specific */
 #define SHT_HIPROC	  0x7fffffff	/* End of processor-specific */
+
+#define SHT_SCE_IOPMOD	  0x70000080
+#define SHT_SCE_EEMOD	  0x70000090
+#define SHT_SCE_PSPRELA	  0x700000a0
+#define SHT_SCE_PPURELA	  0x700000a4
+
+
 #define SHT_LOUSER	  0x80000000	/* Start of application-specific */
 #define SHT_HIUSER	  0x8fffffff	/* End of application-specific */
 
@@ -529,6 +562,25 @@ typedef struct
 #define PT_LOPROC	0x70000000	/* Start of processor-specific */
 #define PT_HIPROC	0x7fffffff	/* End of processor-specific */
 
+
+/* SCE-specific program segment types.  */
+#define PT_SCE_RELA		0x60000000
+#define PT_SCE_LICINFO_1	0x60000001
+#define PT_SCE_LICINFO_2	0x60000002
+#define PT_SCE_DYNLIBDATA	0x61000000
+#define PT_SCE_PROCESS_PARAM	0x61000001
+#define PT_SCE_MODULE_PARAM	0x61000002
+#define PT_SCE_RELRO		0x61000010
+#define PT_SCE_COMMENT		0x6fffff00
+#define PT_SCE_LIBVERSION	0x6fffff01
+#define PT_SCE_UNK_70000001	0x70000001
+#define PT_SCE_IOPMOD		0x70000080
+#define PT_SCE_EEMOD		0x70000090
+#define PT_SCE_PSPRELA		0x700000a0
+#define PT_SCE_PSPRELA2		0x700000a1
+#define PT_SCE_PPURELA		0x700000a4
+#define PT_SCE_SEGSYM		0x700000a8
+
 /* Legal values for p_flags (segment flags).  */
 
 #define PF_X		(1 << 0)	/* Segment is executable */
@@ -536,6 +588,15 @@ typedef struct
 #define PF_R		(1 << 2)	/* Segment is readable */
 #define PF_MASKOS	0x0ff00000	/* OS-specific */
 #define PF_MASKPROC	0xf0000000	/* Processor-specific */
+
+
+/* SCE-specific program segment flags.  */
+#define PF_SPU_X	0x00100000
+#define PF_SPU_W	0x00200000
+#define PF_SPU_R	0x00400000
+#define PF_RSX_X	0x01000000
+#define PF_RSX_W	0x02000000
+#define PF_RSX_R	0x04000000
 
 /* Legal values for note segment descriptor types for core files. */
 

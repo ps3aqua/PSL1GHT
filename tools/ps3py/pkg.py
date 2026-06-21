@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from Struct import Struct
-from fself import SelfHeader, AppInfo
+from fself import SceHeader, ExtendedHeader, AppInfo
 
 import struct
 import sys
@@ -440,12 +440,13 @@ def pack(folder, contentid, outname=None):
 			fileSHA1 = SHA1(fileData)
 			fp.close()
 			if fileData[0:9] == b"SCE\0\0\0\0\x02\x80":
-				fselfheader = SelfHeader()
-				fselfheader.unpack(fileData[0:len(fselfheader)])
+				sceheader = SceHeader()
+				extendedheader = ExtendedHeader()
+				extendedheader.unpack(fileData[len(sceheader):len(extendedheader)])
 				appheader = AppInfo()
-				appheader.unpack(fileData[fselfheader.AppInfo:fselfheader.AppInfo+len(appheader)])
+				appheader.unpack(fileData[extendedheader.AppInfo:extendedheader.AppInfo+len(appheader)])
 				found = False
-				digestOff = fselfheader.digest
+				digestOff = extendedheader.supplHdrOffset
 				while not found:
 					digest = DigestBlock()
 					digest.unpack(fileData[digestOff:digestOff+len(digest)])

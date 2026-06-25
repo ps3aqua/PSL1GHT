@@ -98,7 +98,7 @@ void init_screen(void *host_addr,u32 size)
 	memset(&vconfig,0,sizeof(videoOutConfiguration));
 
 	vconfig.resolution = state.displayMode.resolution;
-	vconfig.format = VIDEO_BUFFER_FORMAT_XRGB;
+	vconfig.format = VIDEO_OUT_BUFFER_FORMAT_XRGB;
 	vconfig.pitch = res.width*sizeof(u32);
 
 	wait_rsx_idle();

@@ -153,16 +153,16 @@ init_screen ()
   assert (state.state == 0);    // Make sure display is enabled
 
   // Get the current resolution
-  assert (videoOutGetResolution (VIDEO_RESOLUTION_1080, &res) == 0);
+  assert (videoOutGetResolution (VIDEO_OUT_RESOLUTION_1080, &res) == 0);
 
   // Configure the buffer format to xRGB
   videoOutConfiguration vconfig;
 
   memset (&vconfig, 0, sizeof (videoOutConfiguration));
-  vconfig.resolution = VIDEO_RESOLUTION_1080;
-  vconfig.format = VIDEO_BUFFER_FORMAT_XRGB;
+  vconfig.resolution = VIDEO_OUT_RESOLUTION_1080;
+  vconfig.format = VIDEO_OUT_BUFFER_FORMAT_XRGB;
   vconfig.pitch = res.width * 4;
-  vconfig.aspect = VIDEO_ASPECT_AUTO;
+  vconfig.aspect = VIDEO_OUT_ASPECT_AUTO;
 
   waitRSXIdle ();
 

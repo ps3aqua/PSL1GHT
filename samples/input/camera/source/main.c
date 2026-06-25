@@ -67,7 +67,7 @@ void init_screen() {
 	VideoConfiguration vconfig;
 	memset(&vconfig, 0, sizeof(VideoConfiguration));
 	vconfig.resolution = state.displayMode.resolution;
-	vconfig.format = VIDEO_BUFFER_FORMAT_XRGB;
+	vconfig.format = VIDEO_OUT_BUFFER_FORMAT_XRGB;
 	vconfig.pitch = res.width * 4;
 	vconfig.aspect=state.displayMode.aspect;
 
